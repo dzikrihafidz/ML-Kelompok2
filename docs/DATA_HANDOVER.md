@@ -93,8 +93,76 @@ File:
 
 Fitur input:
 
-```text
-AT
-V
-AP
-RH
+- AT
+- V
+- AP
+- RH
+
+Standardisasi menggunakan `StandardScaler`.
+
+Regression scaler:
+`models/regression_scaler.pkl`
+
+Cluster scaler:
+`models/cluster_scaler.pkl`
+
+Regression scaler di-fit hanya menggunakan data training untuk
+mencegah data leakage.
+
+---
+
+## 7. Feature Engineering
+
+Baseline features:
+
+- AT
+- V
+- AP
+- RH
+
+Candidate features:
+
+- AT_squared
+- AT_V_interaction
+- AP_RH_ratio
+
+Candidate features belum ditetapkan sebagai fitur final dan perlu
+diuji oleh ML Engineer berdasarkan performa model.
+
+---
+
+## 8. Handover
+
+### ML Engineer 1 - Regression
+
+Gunakan:
+
+- `data/processed/CCPP_train.csv`
+- `data/processed/CCPP_test.csv`
+- `models/regression_scaler.pkl`
+
+Target:
+`PE`
+
+### ML Engineer 2 - Clustering
+
+Gunakan:
+
+- `AT`
+- `V`
+- `AP`
+- `RH`
+
+Scaler:
+`models/cluster_scaler.pkl`
+
+`PE` tidak digunakan sebagai input utama clustering dan dapat digunakan
+setelah clustering untuk interpretasi karakteristik cluster.
+
+---
+
+## 9. Source Code
+
+- `src/preprocessing.py`
+- `src/feature_engineering.py`
+- `src/validate_data_pipeline.py`
