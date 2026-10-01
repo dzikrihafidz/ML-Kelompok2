@@ -1,22 +1,7 @@
-# Virtual environment
-.venv/
 
-# Python cache
+.venv/
 __pycache__/
 *.py[cod]
-
-# Jupyter
-.ipynb_checkpoints/
-
-# VS Code
-.vscode/
-
-# Environment
 .env
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Logs
-*.log
+.ipynb_checkpoints/
+.vscode/

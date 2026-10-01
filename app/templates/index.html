@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard analisis dataset Combined Cycle Power Plant">
+    <title>PowerPlantAI | Analytics</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+    <!-- Gunakan Plotly untuk ketiga grafik -->
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+</head>
+
+<body>
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-icon">✦</span>
+            <span>PowerPlantAI</span>
+        </div>
+
+        <p class="sidebar-label">MENU UTAMA</p>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-link active">
+                <span>▦</span> Dashboard
+            </a>
+            <a href="#statistics" class="nav-link">
+                <span>▤</span> Statistik Data
+            </a>
+            <a href="#visualizations" class="nav-link">
+                <span>◈</span> Visualisasi
+            </a>
+            <a href="#prediction" class="nav-link">
+                <span>◇</span> Prediksi ML
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="connection-status">
+                <span id="backend-dot" class="status-dot"></span>
+                <span>Flask Backend</span>
+            </div>
+            <p id="backend-status">Memeriksa koneksi...</p>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <!-- HEADER -->
+        <header class="page-header" id="dashboard">
+            <div>
+                <p class="eyebrow">MACHINE LEARNING PROJECT</p>
+                <h1>Power Plant <span>Analytics</span></h1>
+                <p class="page-description">
+                    Analisis performa Combined Cycle Power Plant
+                    berdasarkan dataset aktual.
+                </p>
+            </div>
+            <span class="header-badge">● Dataset Analytics</span>
+        </header>
+
+        <!-- RINGKASAN DATASET -->
+        <section class="section-block">
+            <div class="section-heading">
+                <div>
+                    <h2>Dataset Overview</h2>
+                    <p>Ringkasan data yang dibaca langsung dari CSV.</p>
+                </div>
+                <button id="refresh-button" class="btn-primary" type="button">
+                    ↻ Refresh Data
+                </button>
+            </div>
+
+            <div class="overview-grid">
+                <article class="metric-card">
+                    <div class="metric-icon icon-green">▦</div>
+                    <p>Total Data</p>
+                    <h3 id="total-rows">—</h3>
+                    <span>Baris dataset</span>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-icon icon-blue">⌘</div>
+                    <p>Total Variabel</p>
+                    <h3 id="total-columns">—</h3>
+                    <span>Fitur dan target</span>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-icon icon-purple">✓</div>
+                    <p>Missing Values</p>
+                    <h3 id="missing-values">—</h3>
+                    <span>Nilai kosong pada variabel yang digunakan</span>
+                </article>
+
+                <article class="metric-card">
+                    <div class="metric-icon icon-orange">∿</div>
+                    <p>Rata-rata PE</p>
+                    <h3 id="average-pe">—</h3>
+                    <span>Electrical Power Output</span>
+                </article>
+            </div>
+
+            <p id="summary-status" class="info-message" role="status">
+                Memuat ringkasan dataset...
+            </p>
+        </section>
+
+        <!-- STATISTIK DESKRIPTIF -->
+        <section class="panel section-block" id="statistics">
+            <div class="section-heading">
+                <div>
+                    <h2>Statistik Deskriptif</h2>
+                    <p>Ringkasan statistik setiap variabel dataset.</p>
+                </div>
+                <span class="small-badge">Live API</span>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th>Variabel</th>
+                        <th>Minimum</th>
+                        <th>Rata-rata</th>
+                        <th>Maksimum</th>
+                        <th>Std. Deviasi</th>
+                    </tr>
+                    </thead>
+                    <tbody id="statistics-body">
+                    <tr>
+                        <td colspan="5">Memuat statistik...</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- INFORMASI VARIABEL -->
+        <section class="panel section-block">
+            <div class="section-heading">
+                <div>
+                    <h2>Feature Information</h2>
+                    <p>Variabel yang digunakan dalam dataset CCPP.</p>
+                </div>
+            </div>
+
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <h3>AT</h3>
+                    <p>Ambient Temperature</p>
+                </article>
+                <article class="feature-card">
+                    <h3>V</h3>
+                    <p>Exhaust Vacuum</p>
+                </article>
+                <article class="feature-card">
+                    <h3>AP</h3>
+                    <p>Ambient Pressure</p>
+                </article>
+                <article class="feature-card">
+                    <h3>RH</h3>
+                    <p>Relative Humidity</p>
+                </article>
+                <article class="feature-card">
+                    <h3>PE</h3>
+                    <p>Electrical Power Output</p>
+                </article>
+            </div>
+        </section>
+
+        <!-- VISUALISASI DATA -->
+        <section class="section-block" id="visualizations">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">DATA EXPLORATION</p>
+                    <h2>Dataset Visualization</h2>
+                    <p>
+                        Grafik dibuat dari data CSV aktual melalui Flask,
+                        bukan data simulasi.
+                    </p>
+                </div>
+                <span class="small-badge">Data Aktual</span>
+            </div>
+
+            <p id="visualization-status" class="info-message" role="status">
+                Memuat data visualisasi...
+            </p>
+
+            <!-- Grafik 1: Scatter plot -->
+            <article class="panel chart-panel">
+                <div class="chart-heading">
+                    <div>
+                        <h3>AT vs PE</h3>
+                        <p>
+                            Hubungan temperatur lingkungan dengan
+                            electrical power output.
+                        </p>
+                    </div>
+                    <span class="chart-type">Scatter Plot</span>
+                </div>
+
+                <div
+                    id="scatter-chart"
+                    class="chart-container"
+                    role="img"
+                    aria-label="Scatter plot AT terhadap PE"
+                ></div>
+            </article>
+
+            <!-- Grafik 2: Correlation heatmap -->
+            <article class="panel chart-panel">
+                <div class="chart-heading">
+                    <div>
+                        <h3>Correlation Heatmap</h3>
+                        <p>
+                            Korelasi Pearson antarvariabel numerik
+                            pada dataset.
+                        </p>
+                    </div>
+                    <span class="chart-type">Correlation</span>
+                </div>
+
+                <div
+                    id="heatmap-chart"
+                    class="chart-container heatmap-chart"
+                    role="img"
+                    aria-label="Heatmap korelasi antarvariabel"
+                ></div>
+
+                <p class="chart-note">
+                    Nilai korelasi berada pada rentang -1 hingga 1.
+                    Nilai negatif menunjukkan hubungan linear berlawanan,
+                    sedangkan nilai positif menunjukkan hubungan linear
+                    searah.
+                </p>
+            </article>
+
+            <!-- Grafik 3: Distribusi PE -->
+            <article class="panel chart-panel">
+                <div class="chart-heading">
+                    <div>
+                        <h3>Distribusi PE</h3>
+                        <p>
+                            Distribusi frekuensi Electrical Power Output
+                            pada data yang tersedia.
+                        </p>
+                    </div>
+                    <span class="chart-type">Histogram</span>
+                </div>
+
+                <div
+                    id="distribution-chart"
+                    class="chart-container"
+                    role="img"
+                    aria-label="Histogram distribusi PE"
+                ></div>
+            </article>
+        </section>
+
+        <!-- PREDIKSI ML -->
+        <section class="panel section-block" id="prediction">
+            <div class="section-heading">
+                <div>
+                    <h2>Machine Learning Prediction</h2>
+                    <p>
+                        Prediksi PE akan tersedia setelah model regresi
+                        hasil training diintegrasikan.
+                    </p>
+                </div>
+                <span class="pending-badge">Model Pending</span>
+            </div>
+
+            <div class="info-message">
+                Visualisasi dan statistik menggunakan data aktual.
+                Fitur prediksi belum diaktifkan karena model regresi
+                belum diintegrasikan.
+            </div>
+        </section>
+
+        <footer class="page-footer">
+            PowerPlantAI · Combined Cycle Power Plant · Flask
+        </footer>
+    </main>
+</div>
+
+<!-- Script aplikasi dimuat setelah elemen HTML dan Plotly -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
