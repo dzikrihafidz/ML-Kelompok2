@@ -1,0 +1,3 @@
+Feature Set,MAE,RMSE,R2
+Baseline,2.405946,3.43144,0.959935
+Engineered,2.450048,3.477157,0.958861
