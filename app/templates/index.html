@@ -1,12 +1,15 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Dashboard prediksi daya listrik dan clustering menggunakan Machine Learning.">
 
-    <title>PowerPlantAI | Machine Learning Prediction</title>
+    <meta
+        name="description"
+        content="Dashboard prediksi daya listrik menggunakan model Machine Learning."
+    >
+
+    <title>PowerPlantAI | Prediksi Machine Learning</title>
 
     <link
         rel="stylesheet"
@@ -19,6 +22,7 @@
 <body>
 <div class="app-layout">
 
+    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="brand">
             <span class="brand-icon">✦</span>
@@ -51,16 +55,20 @@
         </div>
     </aside>
 
+    <!-- KONTEN UTAMA -->
     <main class="main-content">
 
         <!-- HEADER -->
         <header class="page-header" id="dashboard">
             <div>
                 <p class="eyebrow">MACHINE LEARNING PROJECT</p>
-                <h1>Power Plant <span>Prediction</span></h1>
+
+                <h1>
+                    Power Plant <span>Prediction</span>
+                </h1>
 
                 <p class="page-description">
-                    Prediksi Electrical Power Output dan analisis cluster
+                    Prediksi Electrical Power Output dan analisis clustering
                     berdasarkan input kondisi lingkungan pengguna.
                 </p>
             </div>
@@ -68,15 +76,16 @@
             <span class="header-badge">● Model Prediction</span>
         </header>
 
-        <!-- FORM INPUT PREDIKSI -->
+        <!-- FORM INPUT -->
         <section class="panel section-block" id="prediction">
 
             <div class="section-heading">
                 <div>
-                    <h2>Machine Learning Prediction</h2>
+                    <h2>Input Kondisi Lingkungan</h2>
+
                     <p>
-                        Masukkan empat variabel lingkungan untuk menjalankan
-                        model regresi dan clustering.
+                        Masukkan nilai AT, V, AP, dan RH untuk menjalankan
+                        model regresi dan KMeans.
                     </p>
                 </div>
 
@@ -173,7 +182,7 @@
                 role="status"
                 aria-live="polite"
             >
-                Masukkan nilai AT, V, AP, dan RH, lalu klik Hitung Prediksi.
+                Masukkan nilai input, lalu klik Hitung Prediksi.
             </p>
 
             <!-- HASIL MODEL -->
@@ -183,25 +192,55 @@
                     <div>
                         <p class="eyebrow">HASIL MODEL</p>
                         <h2>Hasil Prediksi</h2>
-                        <p>Hasil berdasarkan input yang baru diproses.</p>
+
+                        <p>
+                            Hasil berdasarkan input yang baru diproses.
+                        </p>
                     </div>
                 </div>
 
                 <div class="overview-grid">
 
+                    <!-- HASIL REGRESI -->
                     <article class="metric-card">
                         <div class="metric-icon icon-green">∿</div>
 
                         <p>Prediksi Electrical Power Output</p>
 
                         <h3>
-                            <span id="prediction-pe">—</span>
-                            MW
+                            <span id="prediction-pe">—</span> MW
                         </h3>
 
-                        <span>Hasil model regresi</span>
+                        <span>
+                            Estimasi daya keluaran dari model regresi.
+                        </span>
+
+                        <div class="energy-estimates">
+                            <div class="energy-item">
+                                <p>Estimasi energi 1 jam</p>
+                                <h3>
+                                    <span id="energy-1h">—</span> MWh
+                                </h3>
+                            </div>
+
+                            <div class="energy-item">
+                                <p>Estimasi energi 24 jam</p>
+                                <h3>
+                                    <span id="energy-24h">—</span> MWh
+                                </h3>
+                            </div>
+                        </div>
+
+                        <p class="chart-note">
+                            Estimasi energi dihitung dari daya prediksi
+                            dikalikan waktu. Perhitungan mengasumsikan
+                            daya tetap konstan selama periode tersebut;
+                            hasil ini bukan jaminan durasi pemakaian
+                            suatu perangkat.
+                        </p>
                     </article>
 
+                    <!-- HASIL CLUSTERING -->
                     <article class="metric-card">
                         <div class="metric-icon icon-purple">◇</div>
 
@@ -226,13 +265,16 @@
 
                 </div>
 
-                <!-- INPUT YANG BENAR-BENAR DIPROSES -->
+                <!-- RINGKASAN INPUT -->
                 <article class="panel chart-panel input-summary-panel">
+
                     <div class="chart-heading">
                         <div>
                             <h3>Input yang Diproses Model</h3>
+
                             <p>
-                                Nilai yang dikirim ke model pada prediksi terakhir.
+                                Nilai input yang digunakan pada prediksi
+                                terakhir.
                             </p>
                         </div>
 
@@ -242,7 +284,7 @@
                     <div class="overview-grid">
 
                         <article class="metric-card">
-                            <p>AT — Temperature</p>
+                            <p>AT — Ambient Temperature</p>
                             <h3 id="result-at">—</h3>
                         </article>
 
@@ -267,7 +309,7 @@
             </div>
         </section>
 
-        <!-- VISUALISASI HASIL MODEL -->
+        <!-- VISUALISASI KHUSUS INPUT PENGGUNA -->
         <section
             class="section-block"
             id="visualizations"
@@ -277,18 +319,20 @@
             <div class="section-heading">
                 <div>
                     <p class="eyebrow">MODEL OUTPUT VISUALIZATION</p>
+
                     <h2>Visualisasi Input dan Hasil Prediksi</h2>
 
                     <p>
-                        Visualisasi diperbarui menggunakan input terbaru
-                        dan hasil model regresi serta KMeans.
+                        Grafik berikut dibuat dari input terakhir dan
+                        hasil yang dikembalikan model. Grafik tidak
+                        menampilkan statistik seluruh dataset.
                     </p>
                 </div>
 
                 <span class="small-badge">Hasil Prediksi</span>
             </div>
 
-            <!-- GRAFIK INPUT -->
+            <!-- GRAFIK INPUT AT V AP RH -->
             <article class="panel chart-panel">
 
                 <div class="chart-heading">
@@ -308,19 +352,19 @@
                     id="input-chart"
                     class="chart-container"
                     role="img"
-                    aria-label="Grafik nilai input yang digunakan dalam prediksi"
+                    aria-label="Grafik input AT, V, AP, dan RH"
                 ></div>
 
                 <p class="chart-note">
-                    Keempat variabel memiliki satuan dan rentang yang berbeda.
-                    Grafik menampilkan nilai masing-masing variabel; tinggi
-                    batang tidak digunakan untuk membandingkan pengaruh
-                    antarvariabel.
+                    Keempat variabel memiliki satuan dan rentang berbeda.
+                    Grafik menampilkan nilai masing-masing variabel;
+                    tinggi batang tidak digunakan untuk membandingkan
+                    pengaruh antarvariabel.
                 </p>
 
             </article>
 
-            <!-- GRAFIK OUTPUT REGRESI -->
+            <!-- GRAFIK HASIL PREDIKSI PE -->
             <article class="panel chart-panel">
 
                 <div class="chart-heading">
@@ -329,28 +373,29 @@
 
                         <p>
                             Nilai PE yang dihasilkan model regresi
-                            dari input terbaru.
+                            untuk input terbaru.
                         </p>
                     </div>
 
-                    <span class="chart-type">Regression</span>
+                    <span class="chart-type">Output Regresi</span>
                 </div>
 
                 <div
                     id="prediction-chart"
                     class="chart-container"
                     role="img"
-                    aria-label="Grafik hasil prediksi Electrical Power Output"
+                    aria-label="Grafik hasil prediksi PE"
                 ></div>
 
                 <p class="chart-note">
-                    Grafik ini menampilkan output model untuk satu input,
-                    bukan distribusi PE dari seluruh dataset.
+                    Grafik ini menunjukkan satu hasil prediksi dari
+                    model untuk input yang diberikan, bukan distribusi
+                    PE seluruh dataset.
                 </p>
 
             </article>
 
-            <!-- RINGKASAN CLUSTER -->
+            <!-- INTERPRETASI CLUSTER -->
             <article class="panel chart-panel">
 
                 <div class="chart-heading">
@@ -358,8 +403,8 @@
                         <h3>Interpretasi Hasil Clustering</h3>
 
                         <p>
-                            Keterangan cluster berdasarkan karakteristik
-                            kelompok yang digunakan dalam project.
+                            Hasil pengelompokan KMeans dan karakteristik
+                            cluster yang terkait.
                         </p>
                     </div>
 
@@ -375,6 +420,7 @@
 
                     <article class="feature-card">
                         <h3>Karakteristik Kelompok</h3>
+
                         <p id="visual-cluster-description">
                             Belum ada hasil clustering.
                         </p>
@@ -383,9 +429,9 @@
                 </div>
 
                 <p class="chart-note">
-                    Karakteristik cluster merupakan ringkasan relatif kelompok,
-                    bukan penjelasan pasti tentang penyebab model memilih
-                    cluster untuk satu input.
+                    Keterangan cluster merupakan karakteristik relatif
+                    kelompok. Keterangan ini bukan penjelasan sebab-akibat
+                    yang pasti untuk setiap input.
                 </p>
 
             </article>

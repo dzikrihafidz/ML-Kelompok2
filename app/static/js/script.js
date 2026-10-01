@@ -1,10 +1,13 @@
-
 "use strict";
+
+/* =========================================================
+   INISIALISASI
+   ========================================================= */
 
 document.addEventListener("DOMContentLoaded", () => {
     checkBackend();
 
-    const predictionForm = document.getElementById("prediction-form");
+    const predictionForm = getElement("prediction-form");
 
     if (predictionForm) {
         predictionForm.addEventListener(
@@ -12,22 +15,22 @@ document.addEventListener("DOMContentLoaded", () => {
             handlePredictionSubmit
         );
 
-        // Jika input diubah, hasil lama disembunyikan agar tidak
-        // disangka sebagai hasil dari input yang baru.
         predictionForm.addEventListener("input", () => {
             clearPredictionResults();
         });
     }
 });
 
-// ============================================================
-// KONFIGURASI VISUALISASI
-// ============================================================
+
+/* =========================================================
+   KONFIGURASI GRAFIK
+   ========================================================= */
 
 const chartColors = {
     green: "#55e6b0",
     blue: "#7c8cff",
     purple: "#c084fc",
+    orange: "#f4b860",
     text: "#dbe7f5",
     muted: "#9db0d0",
     grid: "#263650",
@@ -50,20 +53,25 @@ const chartLayout = {
 
     margin: {
         top: 35,
-        right: 25,
+        right: 35,
         bottom: 65,
-        left: 70
+        left: 75
     },
 
     autosize: true
 };
 
-// ============================================================
-// HELPER
-// ============================================================
+
+/* =========================================================
+   HELPER
+   ========================================================= */
+
+function getElement(id) {
+    return document.getElementById(id);
+}
 
 function setText(elementId, value) {
-    const element = document.getElementById(elementId);
+    const element = getElement(elementId);
 
     if (element) {
         element.textContent = value;
@@ -71,7 +79,7 @@ function setText(elementId, value) {
 }
 
 function setMessage(elementId, message, isError = false) {
-    const element = document.getElementById(elementId);
+    const element = getElement(elementId);
 
     if (!element) {
         return;
@@ -81,7 +89,7 @@ function setMessage(elementId, message, isError = false) {
     element.classList.toggle("error", isError);
 }
 
-function formatNumber(value, digits = 2) {
+function formatNumber(value, digits = 3) {
     const number = Number(value);
 
     if (!Number.isFinite(number)) {
@@ -94,13 +102,10 @@ function formatNumber(value, digits = 2) {
     });
 }
 
-function getElement(id) {
-    return document.getElementById(id);
-}
 
-// ============================================================
-// STATUS BACKEND
-// ============================================================
+/* =========================================================
+   STATUS BACKEND FLASK
+   ========================================================= */
 
 async function checkBackend() {
     const statusElement = getElement("backend-status");
@@ -116,7 +121,7 @@ async function checkBackend() {
         const result = await response.json();
 
         if (!response.ok || result.status !== "ok") {
-            throw new Error("Backend Flask tidak merespons dengan benar.");
+            throw new Error("Backend Flask tidak merespons.");
         }
 
         if (statusElement) {
@@ -127,6 +132,7 @@ async function checkBackend() {
         if (dot) {
             dot.classList.remove("offline");
         }
+
     } catch (error) {
         if (statusElement) {
             statusElement.textContent = "Backend tidak terhubung";
@@ -140,9 +146,10 @@ async function checkBackend() {
     }
 }
 
-// ============================================================
-// MEMBERSIHKAN HASIL LAMA
-// ============================================================
+
+/* =========================================================
+   BERSIHKAN HASIL LAMA KETIKA INPUT BERUBAH
+   ========================================================= */
 
 function clearPredictionResults() {
     const resultPanel = getElement("prediction-result");
@@ -162,22 +169,22 @@ function clearPredictionResults() {
     );
 }
 
-// ============================================================
-// SUBMIT PREDIKSI KE FLASK
-// ============================================================
+
+/* =========================================================
+   SUBMIT INPUT KE MODEL FLASK
+   ========================================================= */
 
 async function handlePredictionSubmit(event) {
     event.preventDefault();
 
     const form = event.currentTarget;
     const button = getElement("predict-button");
-
     const resultPanel = getElement("prediction-result");
     const visualizationSection = getElement("visualizations");
 
     const formData = new FormData(form);
 
-    // Nilai input yang dikirim ke endpoint POST /api/predict.
+    // Empat fitur yang dibutuhkan model.
     const values = {
         AT: Number(formData.get("AT")),
         V: Number(formData.get("V")),
@@ -185,7 +192,7 @@ async function handlePredictionSubmit(event) {
         RH: Number(formData.get("RH"))
     };
 
-    // Validasi input.
+    // Pastikan semua nilai input valid.
     const allInputsValid = Object.values(values).every(
         value => Number.isFinite(value)
     );
@@ -219,6 +226,7 @@ async function handlePredictionSubmit(event) {
     );
 
     try {
+        // Hanya mengirim input terbaru ke endpoint prediksi.
         const response = await fetch("/api/predict", {
             method: "POST",
 
@@ -235,7 +243,9 @@ async function handlePredictionSubmit(event) {
         try {
             result = await response.json();
         } catch {
-            throw new Error("Respons backend bukan JSON yang valid.");
+            throw new Error(
+                "Respons backend bukan JSON yang valid."
+            );
         }
 
         if (!response.ok || result.status !== "ok") {
@@ -250,31 +260,77 @@ async function handlePredictionSubmit(event) {
         const returnedInput = result.input || values;
 
         const predictedPE = Number(prediction?.pe);
+        const clusterId = Number(clustering?.cluster_id);
         const clusterLabel = clustering?.label;
 
+        if (!Number.isFinite(predictedPE)) {
+            throw new Error(
+                "Nilai prediksi PE dari backend tidak valid."
+            );
+        }
+
         if (
-            !Number.isFinite(predictedPE) ||
+            !Number.isInteger(clusterId) ||
             typeof clusterLabel !== "string" ||
             clusterLabel.trim() === ""
         ) {
             throw new Error(
-                "Respons prediksi backend tidak lengkap."
+                "Informasi clustering dari backend tidak lengkap."
             );
         }
 
-        // Tampilkan hasil regresi.
-        setText("prediction-pe", formatNumber(predictedPE, 3));
+        /* -----------------------------------------------
+           1. HASIL REGRESI PE
+           ----------------------------------------------- */
 
-        // Tampilkan hasil clustering.
+        setText(
+            "prediction-pe",
+            formatNumber(predictedPE, 3)
+        );
+
+        /*
+         * Estimasi energi:
+         * energi (MWh) = daya (MW) x waktu (jam).
+         *
+         * Perhitungan ini mengasumsikan daya konstan.
+         */
+        const energy1Hour = predictedPE * 1;
+        const energy24Hours = predictedPE * 24;
+
+        setText(
+            "energy-1h",
+            formatNumber(energy1Hour, 3)
+        );
+
+        setText(
+            "energy-24h",
+            formatNumber(energy24Hours, 3)
+        );
+
+
+        /* -----------------------------------------------
+           2. HASIL CLUSTERING
+           ----------------------------------------------- */
+
         setText("prediction-cluster", clusterLabel);
+
+        const clusterDescription =
+            clustering.description ||
+            getClusterDescription(clusterId);
 
         setText(
             "prediction-cluster-description",
-            clustering.description ||
-            "Keterangan cluster belum tersedia."
+            clusterDescription
         );
 
-        // Tampilkan karakteristik cluster dengan aman.
+        setText("visual-cluster-label", clusterLabel);
+
+        setText(
+            "visual-cluster-description",
+            clusterDescription
+        );
+
+        // Isi karakteristik cluster dari respons Flask.
         const characteristicsList = getElement(
             "prediction-cluster-characteristics"
         );
@@ -282,11 +338,18 @@ async function handlePredictionSubmit(event) {
         if (characteristicsList) {
             characteristicsList.replaceChildren();
 
-            const characteristics = Array.isArray(
+            let characteristics = Array.isArray(
                 clustering.characteristics
             )
                 ? clustering.characteristics
                 : [];
+
+            // Jika backend tidak mengirim daftar karakteristik,
+            // gunakan keterangan berdasarkan cluster ID.
+            if (characteristics.length === 0) {
+                characteristics =
+                    getClusterCharacteristics(clusterId);
+            }
 
             characteristics.forEach(characteristic => {
                 const item = document.createElement("li");
@@ -295,41 +358,63 @@ async function handlePredictionSubmit(event) {
             });
         }
 
-        // Tampilkan empat nilai yang benar-benar diproses.
-        setText("result-at", formatNumber(returnedInput.AT));
-        setText("result-v", formatNumber(returnedInput.V));
-        setText("result-ap", formatNumber(returnedInput.AP));
-        setText("result-rh", formatNumber(returnedInput.RH));
 
-        // Tampilkan hasil prediksi terlebih dahulu.
+        /* -----------------------------------------------
+           3. TAMPILKAN INPUT YANG DIPROSES
+           ----------------------------------------------- */
+
+        setText(
+            "result-at",
+            formatNumber(returnedInput.AT)
+        );
+
+        setText(
+            "result-v",
+            formatNumber(returnedInput.V)
+        );
+
+        setText(
+            "result-ap",
+            formatNumber(returnedInput.AP)
+        );
+
+        setText(
+            "result-rh",
+            formatNumber(returnedInput.RH)
+        );
+
+
+        /* -----------------------------------------------
+           4. TAMPILKAN PANEL HASIL DAN VISUALISASI
+           ----------------------------------------------- */
+
         if (resultPanel) {
             resultPanel.hidden = false;
         }
 
-        // Siapkan visualisasi setelah respons model berhasil diterima.
         if (visualizationSection) {
             visualizationSection.hidden = false;
         }
 
-        // Render grafik menggunakan input dan output dari request ini.
+
+        /* -----------------------------------------------
+           5. BUAT GRAFIK DARI INPUT DAN HASIL MODEL
+           ----------------------------------------------- */
+
         renderInputChart(returnedInput);
         renderPredictionChart(predictedPE);
 
-        // Tampilkan hasil cluster pada bagian visualisasi.
-        setText("visual-cluster-label", clusterLabel);
 
-        setText(
-            "visual-cluster-description",
-            clustering.description ||
-            "Keterangan cluster belum tersedia."
-        );
+        /* -----------------------------------------------
+           6. PESAN SUKSES
+           ----------------------------------------------- */
 
         setMessage(
             "prediction-status",
-            "Prediksi berhasil! Hasil regresi, clustering, dan visualisasi telah diperbarui."
+            "Prediksi berhasil! Hasil regresi, estimasi energi, clustering, dan grafik telah diperbarui."
         );
 
-        // Grafik baru sekarang terlihat; sesuaikan ukurannya.
+        // Atur ulang ukuran grafik setelah panel ditampilkan.
         if (typeof Plotly !== "undefined") {
             window.requestAnimationFrame(() => {
                 ["input-chart", "prediction-chart"].forEach(id => {
@@ -360,11 +445,60 @@ async function handlePredictionSubmit(event) {
     }
 }
 
-// ============================================================
-// VISUALISASI INPUT PENGGUNA
-// Data diambil dari respons /api/predict terbaru.
-// Tidak membaca ulang CSV atau /api/visualizations.
-// ============================================================
+
+/* =========================================================
+   KETERANGAN CLUSTER
+   ========================================================= */
+
+function getClusterDescription(clusterId) {
+    if (clusterId === 0) {
+        return (
+            "Cluster 0: karakteristik kelompok relatif memiliki " +
+            "AT lebih rendah, V lebih rendah, RH lebih tinggi, " +
+            "dan PE lebih tinggi."
+        );
+    }
+
+    if (clusterId === 1) {
+        return (
+            "Cluster 1: karakteristik kelompok relatif memiliki " +
+            "AT lebih tinggi, V lebih tinggi, RH lebih rendah, " +
+            "dan PE lebih rendah."
+        );
+    }
+
+    return "Karakteristik untuk cluster ini belum tersedia.";
+}
+
+function getClusterCharacteristics(clusterId) {
+    if (clusterId === 0) {
+        return [
+            "AT (Ambient Temperature): relatif lebih rendah",
+            "V (Exhaust Vacuum): relatif lebih rendah",
+            "RH (Relative Humidity): relatif lebih tinggi",
+            "PE (Electrical Power Output): relatif lebih tinggi"
+        ];
+    }
+
+    if (clusterId === 1) {
+        return [
+            "AT (Ambient Temperature): relatif lebih tinggi",
+            "V (Exhaust Vacuum): relatif lebih tinggi",
+            "RH (Relative Humidity): relatif lebih rendah",
+            "PE (Electrical Power Output): relatif lebih rendah"
+        ];
+    }
+
+    return [
+        "Karakteristik cluster belum tersedia."
+    ];
+}
+
+
+/* =========================================================
+   VISUALISASI INPUT PENGGUNA
+   Data hanya berasal dari respons /api/predict.
+   ========================================================= */
 
 function renderInputChart(input) {
     const element = getElement("input-chart");
@@ -380,7 +514,7 @@ function renderInputChart(input) {
     }
 
     const labels = [
-        "AT — Temperature",
+        "AT — Ambient Temperature",
         "V — Exhaust Vacuum",
         "AP — Ambient Pressure",
         "RH — Relative Humidity"
@@ -411,7 +545,7 @@ function renderInputChart(input) {
                 chartColors.green,
                 chartColors.blue,
                 chartColors.purple,
-                "#f4b860"
+                chartColors.orange
             ]
         },
 
@@ -428,8 +562,8 @@ function renderInputChart(input) {
         margin: {
             top: 25,
             right: 35,
-            bottom: 45,
-            left: 190
+            bottom: 50,
+            left: 205
         },
 
         xaxis: {
@@ -454,11 +588,11 @@ function renderInputChart(input) {
     );
 }
 
-// ============================================================
-// VISUALISASI OUTPUT REGRESI
-// Satu batang = satu hasil prediksi dari model.
-// Bukan distribusi seluruh dataset.
-// ============================================================
+
+/* =========================================================
+   VISUALISASI OUTPUT REGRESI
+   Grafik menampilkan satu prediksi PE saja.
+   ========================================================= */
 
 function renderPredictionChart(predictedPE) {
     const element = getElement("prediction-chart");
@@ -489,7 +623,10 @@ function renderPredictionChart(predictedPE) {
             color: chartColors.green
         },
 
-        text: [`${formatNumber(predictedPE, 3)} MW`],
+        text: [
+            `${formatNumber(predictedPE, 3)} MW`
+        ],
+
         textposition: "outside",
 
         hovertemplate:
@@ -499,20 +636,28 @@ function renderPredictionChart(predictedPE) {
     const layout = {
         ...chartLayout,
 
+        title: {
+            text: "Output Regresi untuk Input Saat Ini",
+            font: {
+                size: 16,
+                color: chartColors.text
+            }
+        },
+
         margin: {
-            top: 45,
-            right: 30,
-            bottom: 55,
+            top: 65,
+            right: 45,
+            bottom: 60,
             left: 75
         },
 
         xaxis: {
-            title: "",
+            title: "Hasil model",
             gridcolor: chartColors.grid
         },
 
         yaxis: {
-            title: "Prediksi PE (MW)",
+            title: "Electrical Power Output (MW)",
             gridcolor: chartColors.grid,
             rangemode: "tozero"
         },
