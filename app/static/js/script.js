@@ -1,18 +1,33 @@
+
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadDashboard();
+    checkBackend();
 
-    const refreshButton = document.getElementById("refresh-button");
+    const predictionForm = document.getElementById("prediction-form");
 
-    if (refreshButton) {
-        refreshButton.addEventListener("click", loadDashboard);
+    if (predictionForm) {
+        predictionForm.addEventListener(
+            "submit",
+            handlePredictionSubmit
+        );
+
+        // Jika input diubah, hasil lama disembunyikan agar tidak
+        // disangka sebagai hasil dari input yang baru.
+        predictionForm.addEventListener("input", () => {
+            clearPredictionResults();
+        });
     }
 });
+
+// ============================================================
+// KONFIGURASI VISUALISASI
+// ============================================================
 
 const chartColors = {
     green: "#55e6b0",
     blue: "#7c8cff",
+    purple: "#c084fc",
     text: "#dbe7f5",
     muted: "#9db0d0",
     grid: "#263650",
@@ -27,429 +42,488 @@ const chartConfig = {
 const chartLayout = {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
+
     font: {
         color: chartColors.text,
         family: "Inter, Segoe UI, Arial, sans-serif"
     },
+
     margin: {
-        top: 55,
-        right: 30,
+        top: 35,
+        right: 25,
         bottom: 65,
-        left: 65
+        left: 70
     },
+
     autosize: true
 };
+
+// ============================================================
+// HELPER
+// ============================================================
+
+function setText(elementId, value) {
+    const element = document.getElementById(elementId);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
 
 function setMessage(elementId, message, isError = false) {
     const element = document.getElementById(elementId);
 
-    if (!element) return;
+    if (!element) {
+        return;
+    }
 
     element.textContent = message;
     element.classList.toggle("error", isError);
 }
 
-function formatNumber(value) {
+function formatNumber(value, digits = 2) {
     const number = Number(value);
 
-    if (!Number.isFinite(number)) return "—";
+    if (!Number.isFinite(number)) {
+        return "—";
+    }
 
     return number.toLocaleString("id-ID", {
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: digits
     });
 }
 
-async function fetchJSON(url) {
-    const response = await fetch(url, {
-        headers: {
-            Accept: "application/json"
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error(`Permintaan ${url} gagal (HTTP ${response.status}).`);
-    }
-
-    const result = await response.json();
-
-    if (result.status !== "ok") {
-        throw new Error(result.message || `Data dari ${url} tidak valid.`);
-    }
-
-    return result;
+function getElement(id) {
+    return document.getElementById(id);
 }
 
-async function loadDashboard() {
-    const refreshButton = document.getElementById("refresh-button");
+// ============================================================
+// STATUS BACKEND
+// ============================================================
 
-    if (refreshButton) {
-        refreshButton.disabled = true;
-        refreshButton.textContent = "Memuat...";
-    }
-
-    try {
-        if (typeof Plotly === "undefined") {
-            throw new Error(
-                "Library Plotly tidak berhasil dimuat. Periksa koneksi internet."
-            );
-        }
-
-        await Promise.all([
-            loadHealth(),
-            loadSummary(),
-            loadVisualizations()
-        ]);
-    } catch (error) {
-        console.error("Gagal memuat dashboard:", error);
-    } finally {
-        if (refreshButton) {
-            refreshButton.disabled = false;
-            refreshButton.textContent = "↻ Refresh Data";
-        }
-    }
-}
-
-async function loadHealth() {
-    const statusElement = document.getElementById("backend-status");
-    const dot = document.getElementById("backend-dot");
+async function checkBackend() {
+    const statusElement = getElement("backend-status");
+    const dot = getElement("backend-dot");
 
     try {
-        const result = await fetchJSON("/api/health");
+        const response = await fetch("/api/health", {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || result.status !== "ok") {
+            throw new Error("Backend Flask tidak merespons dengan benar.");
+        }
 
         if (statusElement) {
             statusElement.textContent =
                 result.message || "Backend Flask berjalan";
         }
 
-        if (dot) dot.classList.remove("offline");
+        if (dot) {
+            dot.classList.remove("offline");
+        }
     } catch (error) {
         if (statusElement) {
             statusElement.textContent = "Backend tidak terhubung";
         }
 
-        if (dot) dot.classList.add("offline");
+        if (dot) {
+            dot.classList.add("offline");
+        }
 
         console.error("Health check gagal:", error);
     }
 }
 
-async function loadSummary() {
-    setMessage("summary-status", "Memuat ringkasan dataset...");
+// ============================================================
+// MEMBERSIHKAN HASIL LAMA
+// ============================================================
 
-    try {
-        const result = await fetchJSON("/api/summary");
+function clearPredictionResults() {
+    const resultPanel = getElement("prediction-result");
+    const visualizationSection = getElement("visualizations");
 
-        setText("total-rows", formatNumber(result.rows));
-        setText("total-columns", formatNumber(result.columns));
-        setText("missing-values", formatNumber(result.missing_values));
-
-        const peStats = result.statistics?.PE;
-        if (peStats) {
-            setText("average-pe", formatNumber(peStats.mean));
-        }
-
-        renderStatistics(result.statistics || {});
-
-        setMessage(
-            "summary-status",
-            `Ringkasan berhasil dimuat dari dataset aktual (${formatNumber(result.rows)} baris).`
-        );
-    } catch (error) {
-        console.error("Gagal memuat ringkasan:", error);
-        setMessage("summary-status", error.message, true);
-
-        const tbody = document.getElementById("statistics-body");
-        if (tbody) {
-            tbody.innerHTML =
-                '<tr><td colspan="5">Statistik tidak dapat dimuat.</td></tr>';
-        }
-    }
-}
-
-function setText(elementId, value) {
-    const element = document.getElementById(elementId);
-
-    if (element) element.textContent = value;
-}
-
-function renderStatistics(statistics) {
-    const tbody = document.getElementById("statistics-body");
-    if (!tbody) return;
-
-    const variables = ["AT", "V", "AP", "RH", "PE"];
-
-    tbody.replaceChildren();
-
-    for (const variable of variables) {
-        const stats = statistics[variable];
-
-        if (!stats) continue;
-
-        const row = document.createElement("tr");
-
-        const values = [
-            variable,
-            formatNumber(stats.min),
-            formatNumber(stats.mean),
-            formatNumber(stats.max),
-            formatNumber(stats.std)
-        ];
-
-        for (const value of values) {
-            const cell = document.createElement("td");
-            cell.textContent = value;
-            row.appendChild(cell);
-        }
-
-        tbody.appendChild(row);
+    if (resultPanel) {
+        resultPanel.hidden = true;
     }
 
-    if (!tbody.children.length) {
-        tbody.innerHTML =
-            '<tr><td colspan="5">Statistik tidak tersedia.</td></tr>';
+    if (visualizationSection) {
+        visualizationSection.hidden = true;
     }
-}
 
-async function loadVisualizations() {
     setMessage(
-        "visualization-status",
-        "Memuat data visualisasi dari CSV..."
+        "prediction-status",
+        "Input berubah. Klik Hitung Prediksi untuk menjalankan model kembali."
+    );
+}
+
+// ============================================================
+// SUBMIT PREDIKSI KE FLASK
+// ============================================================
+
+async function handlePredictionSubmit(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const button = getElement("predict-button");
+
+    const resultPanel = getElement("prediction-result");
+    const visualizationSection = getElement("visualizations");
+
+    const formData = new FormData(form);
+
+    // Nilai input yang dikirim ke endpoint POST /api/predict.
+    const values = {
+        AT: Number(formData.get("AT")),
+        V: Number(formData.get("V")),
+        AP: Number(formData.get("AP")),
+        RH: Number(formData.get("RH"))
+    };
+
+    // Validasi input.
+    const allInputsValid = Object.values(values).every(
+        value => Number.isFinite(value)
     );
 
-    try {
-        const result = await fetchJSON("/api/visualizations");
-
-        const scatter = result.scatter;
-        const correlation = result.correlation;
-        const distribution = result.distribution;
-
-        const atValues = scatter?.x ?? scatter?.at;
-        const peScatterValues = scatter?.y ?? scatter?.pe;
-        const peDistributionValues = distribution?.pe;
-
-        if (
-            !Array.isArray(atValues) ||
-            !Array.isArray(peScatterValues) ||
-            atValues.length === 0 ||
-            atValues.length !== peScatterValues.length
-        ) {
-            throw new Error(
-                "Data AT dan PE untuk scatter plot tidak sesuai. Periksa respons /api/visualizations."
-            );
-        }
-
-        if (
-            !Array.isArray(correlation?.labels) ||
-            !Array.isArray(correlation?.matrix) ||
-            correlation.matrix.length !== correlation.labels.length ||
-            correlation.matrix.some(
-                row =>
-                    !Array.isArray(row) ||
-                    row.length !== correlation.labels.length
-            )
-        ) {
-            throw new Error(
-                "Data matriks korelasi tidak sesuai. Periksa respons API."
-            );
-        }
-
-        if (
-            !Array.isArray(peDistributionValues) ||
-            peDistributionValues.length === 0
-        ) {
-            throw new Error(
-                "Data distribusi PE kosong. Periksa respons API."
-            );
-        }
-
-        renderScatterPlot(atValues, peScatterValues);
-        renderCorrelationHeatmap(correlation);
-        renderPEDistribution(peDistributionValues);
-
+    if (!allInputsValid) {
         setMessage(
-            "visualization-status",
-            `Visualisasi berhasil dimuat dari dataset aktual (${formatNumber(result.rows)} baris).`
-        );
-    } catch (error) {
-        console.error("Gagal memuat visualisasi:", error);
-
-        setMessage(
-            "visualization-status",
-            `Visualisasi gagal dimuat: ${error.message}`,
+            "prediction-status",
+            "Pastikan semua input berisi angka yang valid.",
             true
         );
-    }
-}
 
-function renderScatterPlot(atValues, peValues) {
-    const element = document.getElementById("scatter-chart");
-
-    if (!element) {
-        throw new Error('Elemen grafik "scatter-chart" tidak ditemukan di HTML.');
+        return;
     }
 
-    const x = [];
-    const y = [];
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Menghitung...";
+    }
 
-    for (let i = 0; i < atValues.length; i++) {
-        const at = Number(atValues[i]);
-        const pe = Number(peValues[i]);
+    if (resultPanel) {
+        resultPanel.hidden = true;
+    }
 
-        if (Number.isFinite(at) && Number.isFinite(pe)) {
-            x.push(at);
-            y.push(pe);
+    if (visualizationSection) {
+        visualizationSection.hidden = true;
+    }
+
+    setMessage(
+        "prediction-status",
+        "Model sedang menghitung prediksi PE dan cluster..."
+    );
+
+    try {
+        const response = await fetch("/api/predict", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json"
+            },
+
+            body: JSON.stringify(values)
+        });
+
+        let result;
+
+        try {
+            result = await response.json();
+        } catch {
+            throw new Error("Respons backend bukan JSON yang valid.");
+        }
+
+        if (!response.ok || result.status !== "ok") {
+            throw new Error(
+                result.message ||
+                `Prediksi gagal (HTTP ${response.status}).`
+            );
+        }
+
+        const prediction = result.prediction;
+        const clustering = result.clustering;
+        const returnedInput = result.input || values;
+
+        const predictedPE = Number(prediction?.pe);
+        const clusterLabel = clustering?.label;
+
+        if (
+            !Number.isFinite(predictedPE) ||
+            typeof clusterLabel !== "string" ||
+            clusterLabel.trim() === ""
+        ) {
+            throw new Error(
+                "Respons prediksi backend tidak lengkap."
+            );
+        }
+
+        // Tampilkan hasil regresi.
+        setText("prediction-pe", formatNumber(predictedPE, 3));
+
+        // Tampilkan hasil clustering.
+        setText("prediction-cluster", clusterLabel);
+
+        setText(
+            "prediction-cluster-description",
+            clustering.description ||
+            "Keterangan cluster belum tersedia."
+        );
+
+        // Tampilkan karakteristik cluster dengan aman.
+        const characteristicsList = getElement(
+            "prediction-cluster-characteristics"
+        );
+
+        if (characteristicsList) {
+            characteristicsList.replaceChildren();
+
+            const characteristics = Array.isArray(
+                clustering.characteristics
+            )
+                ? clustering.characteristics
+                : [];
+
+            characteristics.forEach(characteristic => {
+                const item = document.createElement("li");
+                item.textContent = characteristic;
+                characteristicsList.appendChild(item);
+            });
+        }
+
+        // Tampilkan empat nilai yang benar-benar diproses.
+        setText("result-at", formatNumber(returnedInput.AT));
+        setText("result-v", formatNumber(returnedInput.V));
+        setText("result-ap", formatNumber(returnedInput.AP));
+        setText("result-rh", formatNumber(returnedInput.RH));
+
+        // Tampilkan hasil prediksi terlebih dahulu.
+        if (resultPanel) {
+            resultPanel.hidden = false;
+        }
+
+        // Siapkan visualisasi setelah respons model berhasil diterima.
+        if (visualizationSection) {
+            visualizationSection.hidden = false;
+        }
+
+        // Render grafik menggunakan input dan output dari request ini.
+        renderInputChart(returnedInput);
+        renderPredictionChart(predictedPE);
+
+        // Tampilkan hasil cluster pada bagian visualisasi.
+        setText("visual-cluster-label", clusterLabel);
+
+        setText(
+            "visual-cluster-description",
+            clustering.description ||
+            "Keterangan cluster belum tersedia."
+        );
+
+        setMessage(
+            "prediction-status",
+            "Prediksi berhasil! Hasil regresi, clustering, dan visualisasi telah diperbarui."
+        );
+
+        // Grafik baru sekarang terlihat; sesuaikan ukurannya.
+        if (typeof Plotly !== "undefined") {
+            window.requestAnimationFrame(() => {
+                ["input-chart", "prediction-chart"].forEach(id => {
+                    const chart = getElement(id);
+
+                    if (chart && chart.data) {
+                        Plotly.Plots.resize(chart);
+                    }
+                });
+            });
+        }
+
+    } catch (error) {
+        console.error("Prediksi gagal:", error);
+
+        setMessage(
+            "prediction-status",
+            error.message ||
+            "Terjadi kesalahan saat memproses prediksi.",
+            true
+        );
+
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Hitung Prediksi";
         }
     }
+}
 
-    if (x.length === 0) {
-        throw new Error("Tidak ada pasangan data AT dan PE yang valid.");
+// ============================================================
+// VISUALISASI INPUT PENGGUNA
+// Data diambil dari respons /api/predict terbaru.
+// Tidak membaca ulang CSV atau /api/visualizations.
+// ============================================================
+
+function renderInputChart(input) {
+    const element = getElement("input-chart");
+
+    if (!element) {
+        return;
     }
 
-    Plotly.newPlot(
-        element,
-        [{
-            x,
-            y,
-            type: "scattergl",
-            mode: "markers",
-            name: "Data aktual",
-            marker: {
-                color: chartColors.green,
-                size: 5,
-                opacity: 0.55
-            },
-            hovertemplate:
-                "AT: %{x:.2f}<br>PE: %{y:.2f}<extra></extra>"
-        }],
-        {
-            ...chartLayout,
-            title: {
-                text: "Ambient Temperature vs Electrical Power",
-                font: { size: 16 }
-            },
-            xaxis: {
-                title: "AT — Ambient Temperature",
-                gridcolor: chartColors.grid,
-                zerolinecolor: chartColors.grid
-            },
-            yaxis: {
-                title: "PE — Electrical Power Output",
-                gridcolor: chartColors.grid,
-                zerolinecolor: chartColors.grid
-            }
+    if (typeof Plotly === "undefined") {
+        element.textContent =
+            "Plotly tidak tersedia. Periksa koneksi internet.";
+        return;
+    }
+
+    const labels = [
+        "AT — Temperature",
+        "V — Exhaust Vacuum",
+        "AP — Ambient Pressure",
+        "RH — Relative Humidity"
+    ];
+
+    const values = [
+        Number(input.AT),
+        Number(input.V),
+        Number(input.AP),
+        Number(input.RH)
+    ];
+
+    if (!values.every(Number.isFinite)) {
+        element.textContent =
+            "Nilai input tidak valid untuk divisualisasikan.";
+        return;
+    }
+
+    const trace = {
+        type: "bar",
+        orientation: "h",
+
+        y: labels,
+        x: values,
+
+        marker: {
+            color: [
+                chartColors.green,
+                chartColors.blue,
+                chartColors.purple,
+                "#f4b860"
+            ]
         },
+
+        text: values.map(value => formatNumber(value)),
+        textposition: "auto",
+
+        hovertemplate:
+            "%{y}<br>Nilai input: %{x}<extra></extra>"
+    };
+
+    const layout = {
+        ...chartLayout,
+
+        margin: {
+            top: 25,
+            right: 35,
+            bottom: 45,
+            left: 190
+        },
+
+        xaxis: {
+            title: "Nilai input",
+            gridcolor: chartColors.grid,
+            zerolinecolor: chartColors.grid
+        },
+
+        yaxis: {
+            automargin: true,
+            autorange: "reversed"
+        },
+
+        showlegend: false
+    };
+
+    Plotly.react(
+        element,
+        [trace],
+        layout,
         chartConfig
     );
 }
 
-function renderCorrelationHeatmap(data) {
-    const element = document.getElementById("heatmap-chart");
+// ============================================================
+// VISUALISASI OUTPUT REGRESI
+// Satu batang = satu hasil prediksi dari model.
+// Bukan distribusi seluruh dataset.
+// ============================================================
+
+function renderPredictionChart(predictedPE) {
+    const element = getElement("prediction-chart");
 
     if (!element) {
-        throw new Error('Elemen grafik "heatmap-chart" tidak ditemukan di HTML.');
+        return;
     }
 
-    const labels = data.labels;
-    const matrix = data.matrix.map(row =>
-        row.map(value => {
-            const number = Number(value);
-            return Number.isFinite(number) ? number : null;
-        })
-    );
+    if (typeof Plotly === "undefined") {
+        element.textContent =
+            "Plotly tidak tersedia. Periksa koneksi internet.";
+        return;
+    }
 
-    Plotly.newPlot(
-        element,
-        [{
-            x: labels,
-            y: labels,
-            z: matrix,
-            type: "heatmap",
-            zmin: -1,
-            zmax: 1,
-            colorscale: [
-                [0, "#4679d8"],
-                [0.5, "#f1f5f9"],
-                [1, "#20c997"]
-            ],
-            colorbar: {
-                title: { text: "Korelasi" },
-                tickfont: { color: chartColors.text }
-            },
-            hovertemplate:
-                "%{y} vs %{x}<br>Korelasi: %{z:.3f}<extra></extra>"
-        }],
-        {
-            ...chartLayout,
-            title: {
-                text: "Correlation Heatmap",
-                font: { size: 16 }
-            },
-            margin: {
-                top: 55,
-                right: 35,
-                bottom: 65,
-                left: 75
-            },
-            xaxis: {
-                side: "bottom",
-                automargin: true
-            },
-            yaxis: {
-                autorange: "reversed",
-                automargin: true
-            }
+    if (!Number.isFinite(predictedPE)) {
+        element.textContent =
+            "Hasil prediksi PE tidak valid.";
+        return;
+    }
+
+    const trace = {
+        type: "bar",
+
+        x: ["Prediksi PE"],
+        y: [predictedPE],
+
+        marker: {
+            color: chartColors.green
         },
-        chartConfig
-    );
-}
 
-function renderPEDistribution(peValues) {
-    const element = document.getElementById("distribution-chart");
+        text: [`${formatNumber(predictedPE, 3)} MW`],
+        textposition: "outside",
 
-    if (!element) {
-        throw new Error('Elemen grafik "distribution-chart" tidak ditemukan di HTML.');
-    }
+        hovertemplate:
+            "Output model: %{y:.3f} MW<extra></extra>"
+    };
 
-    const pe = peValues
-        .map(Number)
-        .filter(Number.isFinite);
+    const layout = {
+        ...chartLayout,
 
-    if (pe.length === 0) {
-        throw new Error("Tidak ada nilai PE yang valid untuk histogram.");
-    }
-
-    Plotly.newPlot(
-        element,
-        [{
-            x: pe,
-            type: "histogram",
-            name: "PE aktual",
-            marker: {
-                color: chartColors.blue,
-                line: {
-                    color: "#aab5ff",
-                    width: 1
-                }
-            },
-            hovertemplate:
-                "Rentang PE: %{x}<br>Jumlah data: %{y}<extra></extra>"
-        }],
-        {
-            ...chartLayout,
-            title: {
-                text: "Distribusi Electrical Power Output (PE)",
-                font: { size: 16 }
-            },
-            xaxis: {
-                title: "PE — Electrical Power Output",
-                gridcolor: chartColors.grid
-            },
-            yaxis: {
-                title: "Jumlah Data",
-                gridcolor: chartColors.grid
-            },
-            bargap: 0.06
+        margin: {
+            top: 45,
+            right: 30,
+            bottom: 55,
+            left: 75
         },
+
+        xaxis: {
+            title: "",
+            gridcolor: chartColors.grid
+        },
+
+        yaxis: {
+            title: "Prediksi PE (MW)",
+            gridcolor: chartColors.grid,
+            rangemode: "tozero"
+        },
+
+        showlegend: false
+    };
+
+    Plotly.react(
+        element,
+        [trace],
+        layout,
         chartConfig
     );
 }

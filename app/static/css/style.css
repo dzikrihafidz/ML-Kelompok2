@@ -676,3 +676,176 @@ a:focus-visible {
     height: 270px;
   }
 }
+
+/* ==========================================================
+   MACHINE LEARNING PREDICTION
+   ========================================================== */
+
+#prediction {
+    scroll-margin-top: 24px;
+}
+
+#prediction-form {
+    width: 100%;
+}
+
+#prediction-form .feature-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+#prediction-form .feature-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-table-head);
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+#prediction-form .feature-card:hover {
+    border-color: #3b5b70;
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+}
+
+#prediction-form .feature-card label {
+    display: block;
+    min-height: 44px;
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+#prediction-form .feature-card input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-size: 14px;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+    color-scheme: dark;
+}
+
+#prediction-form .feature-card input::placeholder {
+    color: #7385a3;
+    opacity: 1;
+}
+
+#prediction-form .feature-card input:hover {
+    border-color: #405572;
+}
+
+#prediction-form .feature-card input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(89, 224, 181, 0.12);
+}
+
+#prediction-form .feature-card input:invalid:focus {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(255, 141, 155, 0.12);
+}
+
+#prediction-form .btn-primary {
+    min-height: 46px;
+    padding: 11px 22px;
+    font-weight: 600;
+}
+
+#prediction-form .btn-primary:active {
+    transform: translateY(0);
+}
+
+#prediction-result {
+    margin-top: 18px;
+}
+
+#prediction-result[hidden] {
+    display: none !important;
+}
+
+#prediction-result .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    max-width: 900px;
+}
+
+#prediction-result .metric-card {
+    min-width: 0;
+    border-color: var(--border);
+    background: var(--bg-card);
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+#prediction-result .metric-card:hover {
+    border-color: #3b5b70;
+    transform: translateY(-2px);
+}
+
+#prediction-result .metric-card h3 {
+    color: var(--text-main);
+    overflow-wrap: anywhere;
+}
+
+#prediction-status {
+    margin-top: 18px;
+}
+
+/* ==========================================================
+   RESPONSIVE PREDICTION FORM
+   ========================================================== */
+
+@media (max-width: 1200px) {
+    #prediction-form .feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    #prediction-form .feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    #prediction-form .feature-card {
+        padding: 14px;
+    }
+
+    #prediction-form .feature-card label {
+        min-height: 0;
+        font-size: 12px;
+    }
+
+    #prediction-form .btn-primary {
+        width: 100%;
+    }
+
+    #prediction-result .overview-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 390px) {
+    #prediction-form .feature-grid {
+        grid-template-columns: 1fr;
+    }
+}
